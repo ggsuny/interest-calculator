@@ -1,0 +1,771 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>利息计算器</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 15px;
+            background-color: #f5f5f5;
+        }
+
+        .container {
+            max-width: 100%;
+            margin: 0 auto;
+            background-color: white;
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        h1 {
+            color: #333;
+            text-align: center;
+            font-size: 24px;
+            margin-bottom: 20px;
+        }
+
+        h3 {
+            color: #444;
+            margin: 15px 0;
+            font-size: 18px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: #666;
+            font-size: 14px;
+        }
+
+        input[type="number"] {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+            box-sizing: border-box;
+        }
+
+        button {
+            width: 100%;
+            padding: 10px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-top: 10px;
+        }
+
+        button:hover {
+            background-color: #45a049;
+        }
+
+        .results {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #f9f9f9;
+            border-radius: 5px;
+        }
+
+        .chart-container {
+            margin: 20px 0;
+            position: relative;
+            height: 300px;
+            width: 100%;
+        }
+
+        .result-item {
+            margin: 10px 0;
+            font-size: 14px;
+        }
+
+        @media (min-width: 768px) {
+            .container {
+                max-width: 800px;
+                padding: 30px;
+            }
+
+            .form-row {
+                display: flex;
+                gap: 20px;
+            }
+
+            .form-group {
+                flex: 1;
+            }
+
+            h1 {
+                font-size: 28px;
+            }
+
+            .chart-container {
+                height: 400px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>利息计算器</h1>
+        <form id="interestForm">
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="m">分期金额(m)：</label>
+                    <input type="number" id="m" required step="any" value="10000">
+                </div>
+                <div class="form-group">
+                    <label for="m1">第一期天数(m₁)：</label>
+                    <input type="number" id="m1" required step="any" value="45">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="n">总期数(n)：</label>
+                    <input type="number" id="n" required step="any" value="10">
+                </div>
+                <div class="form-group">
+                    <label for="alpha">日利率(α)：</label>
+                    <input type="number" id="alpha" required step="any" value="0.0005">
+                </div>
+                <div class="form-group">
+                    <label for="y">存续天数(y)：</label>
+                    <input type="number" id="y" required step="any" value="60">
+                </div>
+            </div>
+            <button type="submit">计算利息</button>
+        </form>
+
+        <div id="result" class="results" style="display: none;">
+            <div class="summary-box">
+                <div class="summary-item">总利息:<span id="totalInterest"></span></div>
+                <div class="summary-item">先息后本总利息:<span id="preInterestTotal"></span></div>
+                <div class="summary-item">先息后本利息增量:<span id="preInterestExcessRatio"></span></div>
+                <div class="summary-item">延一期多余利息:<span id="excessInterest"></span></div>
+                <div class="summary-item">延一期增量:<span id="tableInterestRatio"></span></div>
+            </div>
+            <h3>等额本金利息明细</h3>
+            <table class="interest-table" id="interestDetails">
+                <thead>
+                    <tr>
+                        <th>期数</th>
+                        <th>天数</th>
+                        <th>当期本金</th>
+                        <th>计算公式</th>
+                        <th>当期利息</th>
+                        <th>剩余本金</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+                <tfoot>
+                    <tr>
+                        <td colspan="4" style="text-align: center; font-weight: bold;">总计</td>
+                        <td style="font-weight: bold;"><span id="tableTotalInterest"></span></td>
+                        <td></td>
+                    </tr>
+                </tfoot>
+            </table>
+            <div style="margin: 20px 0;">
+                <h3 style="text-align: center;">10期借据分析</h3>
+                <canvas id="interestComparisonChart10"></canvas>
+            </div>
+
+            <div style="margin: 20px 0;">
+                <canvas id="interestRatioChart10"></canvas>
+            </div>
+
+            <div style="margin: 20px 0;">
+                <h3 style="text-align: center;">5期借据分析</h3>
+                <canvas id="interestComparisonChart5"></canvas>
+            </div>
+
+            <div style="margin: 20px 0;">
+                <canvas id="interestRatioChart5"></canvas>
+            </div>
+
+            <div style="margin: 20px 0;">
+                <h3 style="text-align: center;">20期借据分析</h3>
+                <canvas id="interestComparisonChart20"></canvas>
+            </div>
+
+            <div style="margin: 20px 0;">
+                <canvas id="interestRatioChart20"></canvas>
+            </div>
+
+            <div style="margin: 20px 0;">
+                <h3 style="text-align: center;">动态范围分析</h3>
+                <canvas id="dynamicRangeChart"></canvas>
+            </div>
+
+            <div style="margin: 20px 0;">
+                <canvas id="dynamicRatioChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let comparisonChart10 = null;
+        let ratioChart10 = null;
+        let comparisonChart5 = null;
+        let ratioChart5 = null;
+        let comparisonChart20 = null;
+        let ratioChart20 = null;
+        let dynamicRangeChart = null;
+        let dynamicRatioChart = null;
+
+        function calculateInterestForDay(m, m1, n, alpha, currentDay) {
+            let totalInterest = 0;
+            
+            if (currentDay <= m1) {
+                totalInterest = m * alpha * currentDay;
+            } else {
+                // First period interest
+                totalInterest = m * alpha * m1;
+                
+                const remainingDays = currentDay - m1;
+                const k = Math.floor((remainingDays - 1) / 30) + 1;
+                
+                for (let i = 1; i <= k; i++) {
+                    const currentPrincipal = m - i * m / n;
+                    const days = (i === k) ? ((remainingDays - 1) % 30) + 1 : 30;
+                    if (days > 0) {
+                        totalInterest += currentPrincipal * alpha * days;
+                    }
+                }
+            }
+            
+            return totalInterest;
+        }
+
+        function createComparisonChart(m, m1, n, alpha, periods, chartId) {
+            // 计算实际的最大天数
+            const actualMaxDays = m1 + (periods - 1) * 30;
+            const days = Array.from({length: actualMaxDays + 1}, (_, i) => i);
+            const equalPrincipalInterest = [];
+            const equalPrincipalPlusExtra = [];
+            const interestFirstPrincipal = [];
+
+            days.forEach(day => {
+                // Calculate equal principal interest
+                const baseInterest = calculateInterestForDay(m, m1, periods, alpha, day);
+                equalPrincipalInterest.push(baseInterest);
+
+                // Calculate equal principal + extra interest
+                const extraInterest = day > m1 ? (day - m1) * m * alpha / periods : 0;
+                equalPrincipalPlusExtra.push(baseInterest + extraInterest);
+
+                // Calculate interest first principal later
+                interestFirstPrincipal.push(m * alpha * day);
+            });
+
+            if (window[`comparisonChart${periods}`]) {
+                window[`comparisonChart${periods}`].destroy();
+            }
+
+            const ctx = document.getElementById(chartId).getContext('2d');
+            window[`comparisonChart${periods}`] = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: days,
+                    datasets: [
+                        {
+                            label: '等额本金利息',
+                            data: equalPrincipalInterest,
+                            borderColor: 'rgb(75, 192, 192)',
+                            tension: 0.1
+                        },
+                        {
+                            label: '等额本金+新增利息',
+                            data: equalPrincipalPlusExtra,
+                            borderColor: 'rgb(255, 159, 64)',
+                            tension: 0.1
+                        },
+                        {
+                            label: '先息后本利息',
+                            data: interestFirstPrincipal,
+                            borderColor: 'rgb(255, 99, 132)',
+                            tension: 0.1
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false
+                    },
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: `利息计算方式比较 (${periods}期借据，存续期0-${actualMaxDays}天)`,
+                            font: {
+                                size: 16
+                            }
+                        },
+                        legend: {
+                            position: 'top'
+                        },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false,
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    label += context.parsed.y.toFixed(2);
+                                    return label;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            title: {
+                                display: true,
+                                text: '存续天数'
+                            }
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: '累计利息'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function createRatioChart(m, m1, n, alpha, periods, chartId) {
+            // 计算实际的最大天数
+            const actualMaxDays = m1 + (periods - 1) * 30;
+            const days = Array.from({length: actualMaxDays + 1}, (_, i) => i);
+            const baselineRatio = Array(actualMaxDays + 1).fill(0);
+            const extraInterestRatio = [];
+            const preInterestRatio = [];
+
+            days.forEach(day => {
+                const baseInterest = calculateInterestForDay(m, m1, periods, alpha, day);
+                if (baseInterest === 0) {
+                    extraInterestRatio.push(0);
+                    preInterestRatio.push(0);
+                } else {
+                    // Calculate extra interest ratio
+                    const extraInterest = day > m1 ? (day - m1) * m * alpha / periods : 0;
+                    extraInterestRatio.push((baseInterest + extraInterest) / baseInterest - 1);
+
+                    // Calculate pre-interest ratio
+                    const preInterest = m * alpha * day;
+                    preInterestRatio.push(preInterest / baseInterest - 1);
+                }
+            });
+
+            if (window[`ratioChart${periods}`]) {
+                window[`ratioChart${periods}`].destroy();
+            }
+
+            const ctx = document.getElementById(chartId).getContext('2d');
+            window[`ratioChart${periods}`] = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: days,
+                    datasets: [
+                        {
+                            label: '基准线',
+                            data: baselineRatio,
+                            borderColor: 'rgb(128, 128, 128)',
+                            tension: 0.1
+                        },
+                        {
+                            label: '新增利息增加率',
+                            data: extraInterestRatio,
+                            borderColor: 'rgb(255, 159, 64)',
+                            tension: 0.1
+                        },
+                        {
+                            label: '先息后本利息增加率',
+                            data: preInterestRatio,
+                            borderColor: 'rgb(255, 99, 132)',
+                            tension: 0.1
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false
+                    },
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: `利息增加率比较 (${periods}期借据，存续期0-${actualMaxDays}天)`,
+                            font: {
+                                size: 16
+                            }
+                        },
+                        legend: {
+                            position: 'top'
+                        },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false,
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    label += (context.parsed.y * 100).toFixed(2) + '%';
+                                    return label;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            title: {
+                                display: true,
+                                text: '存续天数'
+                            }
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: '利息比率'
+                            },
+                            ticks: {
+                                callback: function(value) {
+                                    return (value * 100).toFixed(1) + '%';
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function createDynamicRangeCharts(m, m1, n, alpha) {
+            // 计算最大天数：首期天数 + (期数-1)*30
+            const maxDays = m1 + (n - 1) * 30;
+            const days = Array.from({length: maxDays + 1}, (_, i) => i);
+            const equalPrincipalInterest = [];
+            const equalPrincipalPlusExtra = [];
+            const interestFirstPrincipal = [];
+
+            days.forEach(day => {
+                // Calculate equal principal interest
+                const baseInterest = calculateInterestForDay(m, m1, n, alpha, day);
+                equalPrincipalInterest.push(baseInterest);
+
+                // Calculate equal principal + extra interest
+                const extraInterest = day > m1 ? (day - m1) * m * alpha / n : 0;
+                equalPrincipalPlusExtra.push(baseInterest + extraInterest);
+
+                // Calculate interest first principal later
+                interestFirstPrincipal.push(m * alpha * day);
+            });
+
+            // 创建利息计算方式比较图表
+            if (dynamicRangeChart) {
+                dynamicRangeChart.destroy();
+            }
+
+            const ctx = document.getElementById('dynamicRangeChart').getContext('2d');
+            dynamicRangeChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: days,
+                    datasets: [
+                        {
+                            label: '等额本金利息',
+                            data: equalPrincipalInterest,
+                            borderColor: 'rgb(75, 192, 192)',
+                            tension: 0.1
+                        },
+                        {
+                            label: '等额本金+新增利息',
+                            data: equalPrincipalPlusExtra,
+                            borderColor: 'rgb(255, 159, 64)',
+                            tension: 0.1
+                        },
+                        {
+                            label: '先息后本利息',
+                            data: interestFirstPrincipal,
+                            borderColor: 'rgb(255, 99, 132)',
+                            tension: 0.1
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false
+                    },
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: `利息计算方式比较 (首期${m1}天，${n}期，存续期0-${maxDays}天)`,
+                            font: {
+                                size: 16
+                            }
+                        },
+                        legend: {
+                            position: 'top'
+                        },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false,
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    label += context.parsed.y.toFixed(2);
+                                    return label;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            title: {
+                                display: true,
+                                text: '存续天数'
+                            }
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: '累计利息'
+                            }
+                        }
+                    }
+                }
+            });
+
+            // 创建利息增加率比较图表
+            const baselineRatio = Array(maxDays + 1).fill(0);
+            const extraInterestRatio = [];
+            const preInterestRatio = [];
+
+            days.forEach(day => {
+                const baseInterest = calculateInterestForDay(m, m1, n, alpha, day);
+                if (baseInterest === 0) {
+                    extraInterestRatio.push(0);
+                    preInterestRatio.push(0);
+                } else {
+                    // Calculate extra interest ratio
+                    const extraInterest = day > m1 ? (day - m1) * m * alpha / n : 0;
+                    extraInterestRatio.push((baseInterest + extraInterest) / baseInterest - 1);
+
+                    // Calculate pre-interest ratio
+                    const preInterest = m * alpha * day;
+                    preInterestRatio.push(preInterest / baseInterest - 1);
+                }
+            });
+
+            if (dynamicRatioChart) {
+                dynamicRatioChart.destroy();
+            }
+
+            const ratioCtx = document.getElementById('dynamicRatioChart').getContext('2d');
+            dynamicRatioChart = new Chart(ratioCtx, {
+                type: 'line',
+                data: {
+                    labels: days,
+                    datasets: [
+                        {
+                            label: '基准线',
+                            data: baselineRatio,
+                            borderColor: 'rgb(128, 128, 128)',
+                            tension: 0.1
+                        },
+                        {
+                            label: '新增利息增加率',
+                            data: extraInterestRatio,
+                            borderColor: 'rgb(255, 159, 64)',
+                            tension: 0.1
+                        },
+                        {
+                            label: '先息后本利息增加率',
+                            data: preInterestRatio,
+                            borderColor: 'rgb(255, 99, 132)',
+                            tension: 0.1
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false
+                    },
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: `利息增加率比较 (首期${m1}天，${n}期，存续期0-${maxDays}天)`,
+                            font: {
+                                size: 16
+                            }
+                        },
+                        legend: {
+                            position: 'top'
+                        },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false,
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    label += (context.parsed.y * 100).toFixed(2) + '%';
+                                    return label;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            title: {
+                                display: true,
+                                text: '存续天数'
+                            }
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: '利息比率'
+                            },
+                            ticks: {
+                                callback: function(value) {
+                                    return (value * 100).toFixed(1) + '%';
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        document.getElementById('interestForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            // 获取输入值
+            const m = parseFloat(document.getElementById('m').value);
+            const m1 = parseFloat(document.getElementById('m1').value);
+            const n = parseFloat(document.getElementById('n').value);
+            const alpha = parseFloat(document.getElementById('alpha').value);
+            const y = parseFloat(document.getElementById('y').value);
+
+            // Create comparison charts for different periods
+            createComparisonChart(m, m1, 10, alpha, 10, 'interestComparisonChart10');
+            createRatioChart(m, m1, 10, alpha, 10, 'interestRatioChart10');
+
+            createComparisonChart(m, m1, 5, alpha, 5, 'interestComparisonChart5');
+            createRatioChart(m, m1, 5, alpha, 5, 'interestRatioChart5');
+
+            createComparisonChart(m, m1, 20, alpha, 20, 'interestComparisonChart20');
+            createRatioChart(m, m1, 20, alpha, 20, 'interestRatioChart20');
+
+            // Create dynamic range charts
+            createDynamicRangeCharts(m, m1, n, alpha);
+
+            let totalInterest = 0;  // 初始化为0
+            let interestDetails = [];  // 存储每期的详细信息
+
+            if (y <= m1) {
+                // 第一种情况：y ≤ m₁
+                const periodInterest = m * alpha * y;
+                totalInterest = periodInterest;
+                interestDetails.push({
+                    period: 1,
+                    days: y,
+                    currentPrincipal: m,
+                    interest: periodInterest,
+                    remainingPrincipal: m
+                });
+            } else {
+                // 第二种情况：y > m₁
+                const y_rem = y - m1;
+                const k = Math.floor((y_rem - 1) / 30) + 1;
+                
+                // 计算第一期利息
+                const firstPeriodInterest = m * alpha * m1;
+                totalInterest = firstPeriodInterest;
+                interestDetails.push({
+                    period: 1,
+                    days: m1,
+                    currentPrincipal: m,
+                    interest: firstPeriodInterest,
+                    remainingPrincipal: m
+                });
+                
+                // 从第2期开始，逐期计算
+                for (let i = 1; i <= k; i++) {
+                    const currentPrincipal = m - i * m / n;
+                    const days = (i === k) ? ((y_rem - 1) % 30) + 1 : 30;
+                    const periodInterest = currentPrincipal * alpha * days;
+                    totalInterest += periodInterest;
+                    
+                    interestDetails.push({
+                        period: i + 1,
+                        days: days,
+                        currentPrincipal: currentPrincipal,
+                        interest: periodInterest,
+                        remainingPrincipal: currentPrincipal
+                    });
+                }
+            }
+
+            // 显示结果
+            document.getElementById('result').style.display = 'block';
+            document.getElementById('totalInterest').textContent = totalInterest.toFixed(2);
+            document.getElementById('tableTotalInterest').textContent = totalInterest.toFixed(2);
+
+            // 计算先息后本总利息
+            const preInterestTotal = m * alpha * y;
+            document.getElementById('preInterestTotal').textContent = preInterestTotal.toFixed(2);
+            
+            // 计算先息后本利息增量
+            const preInterestExcessRatio = ((preInterestTotal - totalInterest) / totalInterest * 100).toFixed(2) + '%';
+            document.getElementById('preInterestExcessRatio').textContent = preInterestExcessRatio;
+
+            // 计算延一期多余利息和增量
+            const excessInterest = (y-m1)>0?(y-m1)*m*alpha/n:0;
+            document.getElementById('excessInterest').textContent = excessInterest.toFixed(2);
+            const tableInterestRatio = ((excessInterest / totalInterest) * 100).toFixed(2) + '%';
+            document.getElementById('tableInterestRatio').textContent = tableInterestRatio;
+
+            // 更新表格内容
+            const tableBody = document.getElementById('interestDetails').getElementsByTagName('tbody')[0];
+            tableBody.innerHTML = '';
+            interestDetails.forEach(detail => {
+                const row = tableBody.insertRow();
+                row.insertCell().textContent = detail.period;
+                row.insertCell().textContent = detail.days;
+                row.insertCell().textContent = detail.currentPrincipal.toFixed(2);
+                row.insertCell().textContent = `${detail.currentPrincipal.toFixed(2)} × ${alpha} × ${detail.days}`;
+                row.insertCell().textContent = detail.interest.toFixed(2);
+                row.insertCell().textContent = detail.remainingPrincipal.toFixed(2);
+            });
+        });
+    </script>
+</body>
+</html>
